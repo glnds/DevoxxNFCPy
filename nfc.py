@@ -20,50 +20,55 @@ debug = False
 readers = readers()
 print "Available readers:", readers
 
-reader = readers[0]
-print "Using:", reader
+connections = list()
 
-connection = reader.createConnection()
-connection.connect()
+for reader in readers:
+    print "Initializing reader:", reader
 
-if debug:
-    observer = ConsoleCardConnectionObserver()
-    connection.addObserver(observer)
+    connection = reader.createConnection()
+    connection.connect()
+    connections.append(connection)
 
+    if debug:
+        observer = ConsoleCardConnectionObserver()
+        connection.addObserver(observer)
 
-# Get the reader's serial id
-data, sw1, sw2 = connection.transmit(CMD_SERIAL_ID)
-serialId = toHexString(data)
-print "Reader's serial id: {}".format(serialId)
-logging.info("Reader serial id: %s", serialId)
-logging.info("APDU Command result: %02X %02X", sw1, sw2)
+for connection in connections:
+    print connection
+    # Get the reader's serial id
+    data, sw1, sw2 = connection.transmit(CMD_SERIAL_ID)
+    serialId = toHexString(data)
+    print "Reader's serial id: {}".format(serialId)
+    logging.info("Reader serial id: %s", serialId)
+    logging.info("APDU Command result: %02X %02X", sw1, sw2)
 
+    # Get the reader's card id
+    data, sw1, sw2 = connection.transmit(CMD_CARD_ID)
+    cardId = toHexString(data)
+    print "Reader's card id: {}".format(cardId)
+    logging.info("Reader card id: %s", cardId)
+    logging.info("APDU Command result: %02X %02X", sw1, sw2)
 
-# Get the reader's card id
-data, sw1, sw2 = connection.transmit(CMD_CARD_ID)
-cardId = toHexString(data)
-print "Reader's card id: {}".format(cardId)
-logging.info("Reader card id: %s", cardId)
-logging.info("APDU Command result: %02X %02X", sw1, sw2)
-
+print connections
 
 old_tag = []
 while True:
-    data, sw1, sw2 = connection.transmit(CMD_NFC_SCAN)
-    if debug:
-        print data
-        print "Command: %02X %02X" % (sw1, sw2)
+    for connection in connections:
+        data, sw1, sw2 = connection.transmit(CMD_NFC_SCAN)
+        if debug:
+            print data
+            print "Command: %02X %02X" % (sw1, sw2)
 
-    if sw2 == 5:
-        old_tag = []
-        continue
+        if sw2 == 5:
+            old_tag = []
+            continue
 
-    GET_RESPONSE[4] = sw2
-    tag, sw1, sw2 = connection.transmit(GET_RESPONSE)
-    if debug:
-        print tag
-        print "Response: %02X %02X" % (sw1, sw2)
+        GET_RESPONSE[4] = sw2
+        tag, sw1, sw2 = connection.transmit(GET_RESPONSE)
+        if debug:
+            print tag
+            print "Response: %02X %02X" % (sw1, sw2)
 
-    if tag != old_tag:
-        old_tag = tag
-        print toHexString(tag)
+        if tag != old_tag:
+            old_tag = tag
+            print toHexString(tag)
